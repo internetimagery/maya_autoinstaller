@@ -242,7 +242,7 @@ class Repo(object):  # Repository for scripts
         return False
 
 
-class Startup(object):  # Adding startup script
+class Metadata(object):  # Adding metadata
 
     def __init__(self):
         self.scriptPath = mel.eval("internalVar -usd;")
@@ -254,17 +254,17 @@ class Startup(object):  # Adding startup script
             open(self.startPath, "w").close()  # Create blank file if one doesn't exist
         if not os.path.exists(self.installPath):
             os.makedirs(self.installPath)
+        self._extract()
 
-    def _extract(self):  # Extract info from userSetup
+    def _extract(self):  # Inject new script into usersetup file
         f = open(self.startPath, "r")
         data = f.read()
         f.close()
-        match = re.match("#{2} Automatically.*?#{2} End[^\n]", data)
-        if match:
-            print "MATCH"
-            print match.group(0)
-        data += "\n%s" % self._startupFile()
-        print data
+        reg = re.compile("[\n]*?## Automatically generated on \\d{4}-\\d{2}-\\d{2}.+?## End generation\\.\\n", re.S)
+        data = "%s\n%s" % (reg.sub("", data), self._startupFile())
+        f = open(self.startPath, "w")
+        f.write(data)
+        f.close()
 
     def _startupFile(self):
         return """
@@ -284,7 +284,7 @@ except IOError:
 
 
 
-print Startup()._extract()
+Metadata()
 
 
 def result(*thing):  # Just for testing.
