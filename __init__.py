@@ -1,6 +1,7 @@
 # Automatically install script
 import maya.cmds as cmds
-import time, sys, urllib2, json, re, zipfile, os, shutil
+import maya.mel as mel
+import time, sys, urllib2, json, re, zipfile, os, shutil, datetime
 
 pluginInfo = {
     "name":    "clicktime",  # Name of the script file
@@ -38,7 +39,7 @@ class Say(object):  # Logging output
     def __init__(self):
         self.output = []
 
-    def register(self, text):  # Register somewhere to output text
+    def what(self, text):  # Register somewhere to output text
         self.output.append(text)
 
     def it(self, message):
@@ -239,6 +240,51 @@ class Repo(object):  # Repository for scripts
             Say().it("Could not find the file: %s" % src)
             uninstall()
         return False
+
+
+class Startup(object):  # Adding startup script
+
+    def __init__(self):
+        self.scriptPath = mel.eval("internalVar -usd;")
+        self.startPath = os.path.join(self.scriptPath, "userSetup.py")
+        self.installPath = os.path.join(self.scriptPath, "installed_scripts")
+        self.metadata = os.path.join(self.installPath, "metadata.json")
+        if not os.path.exists(self.startPath):
+            Say().it("Creating Startup file. userSetup.py")
+            open(self.startPath, "w").close()  # Create blank file if one doesn't exist
+        if not os.path.exists(self.installPath):
+            os.makedirs(self.installPath)
+
+    def _extract(self):  # Extract info from userSetup
+        f = open(self.startPath, "r")
+        data = f.read()
+        f.close()
+        match = re.match("#{2} Automatically.*?#{2} End[^\n]", data)
+        if match:
+            print "MATCH"
+            print match.group(0)
+        data += "\n%s" % self._startupFile()
+        print data
+
+    def _startupFile(self):
+        return """
+## Automatically generated on %s
+import json, sys
+sys.path.append("%s")
+try:
+    f = open("%s", "r")
+    for script in json.load(f):
+        exec script["startup"]
+    f.close()
+except IOError:
+    print "metadata missing"
+## End generation.
+""" % (datetime.date.today(), self.installPath, self.metadata)
+
+
+
+
+print Startup()._extract()
 
 
 def result(*thing):  # Just for testing.
