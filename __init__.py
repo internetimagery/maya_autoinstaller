@@ -10,6 +10,9 @@ pluginInfo = {
 }
 
 
+## UTILITY CLASSES
+
+
 def unique(item):  # Only keep one window open at a time
     items = {}
 
@@ -27,6 +30,25 @@ class call(object):  # Generic callback for buttons to pass values
                 self.kwargs = kwargs
         def __call__(self, *args):
                 return self.func( *self.args, **self.kwargs )
+
+
+@unique
+class Say(object):  # Logging output
+
+    def __init__(self):
+        self.output = []
+
+    def register(self, text):  # Register somewhere to output text
+        self.output.append(text)
+
+    def it(self, message):
+        print message
+        if self.output:
+            for out in self.output:
+                cmds.text(out, e=True, l="\n%s" % message)
+
+
+## DIALOGS
 
 
 @unique
@@ -49,7 +71,7 @@ class ConfirmDialog(object):  # Cancel at any time.
             cmds.deleteUI(self.GUI["window"], wnd=True)
 
     def _callback(self):
-        print "Canceling install..."
+        Say().it("Canceling install...")
         self._cleanup()
         self.callback()
 
@@ -107,28 +129,31 @@ class MultichoiceDialog(object):  # Choose an option
             cmds.button(l=option, h=40, c=call(self._select, i))
             cmds.setParent("..")
         cmds.showWindow(self.GUI["window"])
-        print "Waiting for choice..."
+        Say().it("Waiting for choice...")
 
     def _select(self, index):
-        print "%s chosen. Moving on..." % self.options[index]
+        Say().it("%s chosen. Moving on..." % self.options[index])
         self.callback(self.options[index])
 
+
+## FUNCTIONALITY
 
 class Repo(object):  # Repository for scripts
 
     def __init__(self, user, repo):
         if user and repo:
             baseurl = "https://api.github.com/repos/%s/%s/releases/latest" % (user, repo)
-            print "Checking for latest script release"
+            Say().it("Checking for latest script release")
             try:
                 u = urllib2.urlopen(baseurl)
                 data = json.loads(u.read())
                 self.version = data["tag_name"]
                 self.downloadUrl = data["zipball_url"]
                 self.releaseDate = re.match("(\d{4}-\d{2}-\d{2})", data["published_at"]).group(1)
-                print "Script found. Version %s. Created on %s." % (self.version, self.releaseDate)
+                Say().it("Script found. Version %s. Created on %s." % (self.version, self.releaseDate))
             except urllib2.HTTPError as e:
-                print e
+                Say().it(e)
+                uninstall()
 
     def download(self, path, name, callback):  # Perform checks on the URL and content for download
         self.callback = callback
@@ -137,7 +162,7 @@ class Repo(object):  # Repository for scripts
             final = os.path.join(path, name)
             if not os.path.exists(temp):
                 os.makedirs(temp)
-            print "Connecting to %s." % self.downloadUrl
+            Say().it("Connecting to %s." % self.downloadUrl)
             try:
                 zippath = os.path.join(temp, "temp.zip")
                 u = urllib2.urlopen(self.downloadUrl)
@@ -148,24 +173,27 @@ class Repo(object):  # Repository for scripts
                 if fileType and typeFilter in fileType:
                     fileSize = meta.getheaders("Content-Length")
                     if fileSize:
-                        print "File size determined."
+                        Say().it("File size determined.")
                         if self._downloadProgress(u, zippath):  # Start actual download
                             if self._unzip(zippath, final):  # Unzip file
-                                print "Doing ok... :)"
+                                callback(final)
                     else:
-                        print "Failed to determine file size."
+                        Say().it("Failed to determine file size.")
+                        uninstall()
                 else:
-                    print "File type is incorrect."
+                    Say().it("File type is incorrect.")
+                    uninstall()
 
             except urllib2.HTTPError as e:
-                print "Something went wrong with the connection...\n%s" % e
+                Say().it("Something went wrong with the connection...\n%s" % e)
+                uninstall()
 
     def _downloadProgress(self, request, path):
         totalSize = int(request.info().getheaders("Content-Length")[0])
         downloaded = 0.0
         try:
             f = open(path, "wb")
-            print "Downloading."
+            Say().it("Downloading.")
             bar = ProgressBar()
             while True:
                 data_buffer = request.read(8192 / 4)
@@ -175,11 +203,12 @@ class Repo(object):  # Repository for scripts
                 progress = downloaded / totalSize
                 bar.step(progress)
                 f.write(data_buffer)
-            print "Download complete. :)"
+            Say().it("Download complete. :)")
             f.close()
             return True
         except IOError as e:
-            print "Could not save file...\n%s" % e
+            Say().it("Could not save file...\n%s" % e)
+            uninstall()
             return False
 
     def _unzip(self, src, dest):
@@ -194,39 +223,31 @@ class Repo(object):  # Repository for scripts
                         if not base_name:
                             match = reg.match(f)
                             base_name = match.group(0) if match else ""
-                        print "Extracting: %s" % reg.sub(dest, f)
+                        Say().it("Extracting: %s" % reg.sub(dest, f))
                         z.extract(f, tmp)
                     z.close()
                     base_path = os.path.join(tmp, base_name)
                     shutil.move(os.path.join(tmp, base_path), dest)
                     return True
                 else:
-                    print "Download appears corrupt..."
+                    Say().it("Download appears corrupt...")
+                    uninstall()
             else:
-                print "File already exists: %s" % dest
+                Say().it("File already exists: %s" % dest)
+                uninstall()
         else:
-            print "Could not find the file: %s" % src
+            Say().it("Could not find the file: %s" % src)
+            uninstall()
         return False
 
 
-@unique
-class Log(object):  # Logging output
-
-    def __init__(object):
-        pass
-
-    def log(message):
-        print message
-
-
 def result(*thing):  # Just for testing.
-    print thing
+    Say().it(thing)
 
 
-def uninstall():  # Remove everything
-    print "removing everything"
+def uninstall():  # Remove everything TODO: fill this in later... change name to cleanup class or something
+    Say().it("Exiting")
 
 
 rep = Repo(pluginInfo["user"], pluginInfo["repo"])
-rep._unzip("/Users/Maczone/Desktop/temp/temp_download/temp.zip", "/Users/Maczone/Desktop/temp/hello")
-#rep.download("/Users/Maczone/Desktop/temp", "hello", result)
+rep.download("/Users/Maczone/Desktop/temp", "hello", result)
