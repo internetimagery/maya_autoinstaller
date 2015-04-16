@@ -14,7 +14,7 @@ def unique(item):  # Only keep one window open at a time
 
 
 @unique
-class ConfirmDialog(object):
+class ConfirmDialog(object):  # Cancel at any time.
 
     def __init__(self, callback):
         self.callback = callback
@@ -35,21 +35,18 @@ class ConfirmDialog(object):
     def _callback(self, button):
         self._cleanup()
         self.callback()
-        print "DANG"
 
 
 class ProgressBar(object):
 
-    def __init__(self, cancelCallback):
+    def __init__(self):
         self.GUI = {}
         self.progress = 0
-        self.callback = cancelCallback  # If we hit cancel
-        self.confirm = ""
 
         self.GUI["window"] = cmds.window(title="Downloading Files:", rtf=True, s=False, mnb=False, mxb=False, ret=True)
         self.GUI['layout1'] = cmds.columnLayout(adjustableColumn=True)
         self.GUI["progress1"] = cmds.progressBar(w=500)
-        self.GUI["button1"] = cmds.button(l="Cancel")
+        self.GUI["button1"] = cmds.button(l="Cancel", c=self._cancelDialog)
         cmds.showWindow(self.GUI["window"])
 
     def step(self, inc):
@@ -66,18 +63,22 @@ class ProgressBar(object):
             self._cleanup()
             print "DONE"
 
+    def _cancelDialog(self, *button):
+        ConfirmDialog(self._cancelProgress)
+
+    def _cancelProgress(self):
+        uninstall()
+
     def _cleanup(self):
         if cmds.window(self.GUI["window"], ex=True):
             cmds.deleteUI(self.GUI["window"], wnd=True)
+        cmds.deleteUI(ConfirmDialog(self._cancelProgress).GUI["window"], wnd=True)
 
+def uninstall():  # Remove everything
+    print "removing everything"
 
-def dummy():
-    print "DUMMY!"
-
-ConfirmDialog(dummy)
-
-#bar = ProgressBar()
+bar = ProgressBar()
 for i in range(100):
-    #time.sleep(0.1)
+    time.sleep(0.1)
     i = (i + 1) / 100.0
-    #bar.step(i)
+    bar.step(i)
