@@ -249,5 +249,4 @@ def uninstall():  # Remove everything TODO: fill this in later... change name to
     Say().it("Exiting")
 
 
-rep = Repo(pluginInfo["user"], pluginInfo["repo"])
-rep.download("/Users/Maczone/Desktop/temp", "hello", result)
+#Repo(pluginInfo["user"], pluginInfo["repo"]).download("/Users/Maczone/Desktop/temp", "hello", result)
