@@ -14,7 +14,17 @@ pluginInfo = {
 ## UTILITY CLASSES
 
 
-def unique(item):  # Only keep one window open at a time
+def unique(item):
+    """
+    Only keep one Class in memory at a time.
+    >>> @unique
+    ... class testClass(object):
+    ...     pass
+    >>> a = testClass()
+    >>> b = testClass()
+    >>> a is b
+    True
+    """
     items = {}
 
     def UniqueItem(*args, **kwargs):
@@ -24,31 +34,70 @@ def unique(item):  # Only keep one window open at a time
     return UniqueItem
 
 
-class call(object):  # Generic callback for buttons to pass values
-        def __init__(self, func, *args, **kwargs):
-                self.func = func
-                self.args = args
-                self.kwargs = kwargs
-        def __call__(self, *args):
-                return self.func( *self.args, **self.kwargs )
+class call(object):
+    """
+    Generic callback for buttons to pass values
+    >>> def testFunc(message):
+    ...     print message
+    >>> call(testFunc, "ok")()
+    ok
+    """
+    def __init__(self, func, *args, **kwargs):
+            self.func = func
+            self.args = args
+            self.kwargs = kwargs
+
+    def __call__(self, *args):
+            return self.func(*self.args, **self.kwargs)
 
 
 @unique
-class Say(object):  # Logging output
-
+class Say(object):
+    """
+    Logging output
+    >>> Say().it("ok")
+    ok
+    """
     def __init__(self):
-        self.output = []
-
-    def what(self, func):  # Register somewhere to output func
-        self.output.append(func)
-
+        self.log = {}
+    """
+    Register somewhere to show output and update progress
+    >>> def testFunc(message):
+    ...     print "it is " + message
+    >>> a = Say().what("log", testFunc)
+    >>> len(a.log["log"])
+    1
+    """
+    def what(self, name, func):
+        self.log[name] = self.log.get(name, [])
+        self.log[name].append(func)
+        return self
+    """
+    Update overall progress
+    >>> def testFuncTwo(prog):
+    ...     print prog
+    >>> Say().what("update", testFuncTwo).when(0.5)
+    0.5
+    """
+    def when(self, progress):
+        try:
+            for func in self.log["update"]:
+                func(progress)
+        except (KeyError, TypeError):
+            pass
+    """
+    Output message
+    >>> Say().it("ok")
+    ok
+    it is ok
+    """
     def it(self, message):
-        print self.output
         print message
-        if self.output:
-            for func in self.output:
-                print "out"
+        try:
+            for func in self.log["log"]:
                 func(message)
+        except (KeyError, TypeError):
+            pass
 sayhold = Say()  # Keep Say alive
 
 
@@ -141,9 +190,18 @@ class MultichoiceDialog(object):  # Choose an option
 
 
 class MainWindow(object):
-
-    def __init__(self):
+    """
+    Main window. For selecting initial options and providing feedback
+    >>> win = MainWindow()
+    >>> if win.GUI["content"]:
+    ...     print "ok"
+    ok
+    >>> cmds.window(win, ex=True)
+    True
+    """
+    def __init__(self, title):
         self.GUI = {}
+        self.title = title
         self.GUI["content"] = {}
         self.GUI["window"] = cmds.window(title="Script Installer", rtf=True, s=False, mnb=False, mxb=False, ret=True)
         self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True)
@@ -152,14 +210,18 @@ class MainWindow(object):
 
     def _buildSelection(self):
         self._clearFrame()
-        self.GUI["content"]["layout1"] = cmds.rowColumnLayout(nc=2)
-        self.GUI["content"]["layout2"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["content"]["layout1"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["content"]["text1"] = cmds.text(label="Features for %s." % self.title)
+        cmds.separator()
+        self.GUI["content"]["layout2"] = cmds.rowColumnLayout(nc=2)
+        self.GUI["content"]["layout3"] = cmds.columnLayout(adjustableColumn=True)
         self.GUI["content"]["image1"] = cmds.iconTextStaticLabel(image="choice.svg", h=130, w=130)
         cmds.setParent("..")
-        self.GUI["content"]["layout3"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["content"]["text1"] = cmds.text(label="What would you like to do?", h=50)
+        self.GUI["content"]["layout4"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["content"]["text2"] = cmds.text(label="What would you like to do?", h=50)
         self.GUI["content"]["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal", c=call(self._buildInstall))
         self.GUI["content"]["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal", c=call(self._buildRemove))
+        cmds.setParent("..")
         cmds.setParent("..")
         cmds.setParent(self.GUI["wrapper"])
 
@@ -182,9 +244,19 @@ class MainWindow(object):
             except RuntimeError:
                 pass
 
-        Say().what(log)
+        def update(progress):
+            processes = 6.0  # Number of processes that will try updating the bar
+            current = cmds.progressBar(self.GUI["progress1"], q=True, v=True)
+            next = progress / processes
+            cmds.progressBar(self.GUI["progress1"], e=True, v=current + next)
+            cmds.refresh(cv=True)
+
+        Say().what("log", log).what("update", update)
+
         Say().it("Installing script...")
         Say().it("\n")
+
+        self._install()
 
     def _buildRemove(self):  # Uninstall UI
         self._clearFrame()
@@ -199,8 +271,54 @@ class MainWindow(object):
                     pass
             self.GUI["content"] = {}
 
+    def _install(self):
+        """
+        Let the installation BEGIN!
+        """
+        with Install() as i:
+            print i.name
+            pass
 
-MainWindow()
+
+class Install(object):
+    """
+    Run through installation process
+    """
+    def __enter__(self):
+        # Script provided Info
+        global pluginInfo
+        self.name = pluginInfo["name"]  # Name of script
+        self.auto = pluginInfo["auto"]  # Code to put in userSetup
+        self.repo = pluginInfo["repo"]  # name of Repository
+        self.user = pluginInfo["user"]  # user of Repository
+
+        # Derived info
+        self.repoUrl = "https://api.github.com/repos/%s/%s/releases/latest" % (self.user, self.repo)
+        scriptDir = mel.eval("internalVar -usd;")
+        self.scriptPath = os.path.join(scriptDir, self.name)  # Place we will put the script
+        self.tmpFile = os.tmpfile()
+        self.cleanup = []  # List of items to remove afterwards
+
+    def __exit__(self, errType, errValue, traceback):
+        """
+        Clean up after install, or if error occurrs
+        """
+        if errType:
+            Say().it("Uh oh... there was a problem installing your script. :(")
+            Say().it("%s :: %s" % (errType.__name__, errValue))
+            Say().it(traceback)
+        Say().it("Cleaning up install.")
+        if self.cleanup:
+            for clean in self.cleanup:
+                if os.path.exists(clean):
+                    try:
+                        os.remove(clean)
+                    except OSError:
+                        os.rmdir(clean)
+        return True
+
+
+MainWindow(pluginInfo["name"])
 
 
 ## FUNCTIONALITY
@@ -365,5 +483,7 @@ def result(*thing):  # Just for testing.
 def uninstall():  # Remove everything TODO: fill this in later... change name to cleanup class or something
     Say().it("Exiting")
 
-
-#Repo(pluginInfo["user"], pluginInfo["repo"]).download("/Users/Maczone/Desktop/temp", "hello", result)
+# Testing
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
