@@ -168,7 +168,6 @@ class Repo(object):  # Repository for scripts
                 zippath = os.path.join(temp, "temp.zip")
                 u = urllib2.urlopen(self.downloadUrl)
                 typeFilter = "application/zip"
-                #f = open(zippath, "wb")
                 meta = u.info()
                 fileType = meta.getheaders("Content-Type")
                 if fileType and typeFilter in fileType:
@@ -193,20 +192,19 @@ class Repo(object):  # Repository for scripts
         totalSize = int(request.info().getheaders("Content-Length")[0])
         downloaded = 0.0
         try:
-            f = open(path, "wb")
-            Say().it("Downloading.")
-            bar = ProgressBar()
-            while True:
-                data_buffer = request.read(8192 / 4)
-                if not data_buffer:
-                    break
-                downloaded += len(data_buffer)
-                progress = downloaded / totalSize
-                bar.step(progress)
-                f.write(data_buffer)
-            Say().it("Download complete. :)")
-            f.close()
-            return True
+            with open(path, "wb") as f:
+                Say().it("Downloading.")
+                bar = ProgressBar()
+                while True:
+                    data_buffer = request.read(8192 / 4)
+                    if not data_buffer:
+                        break
+                    downloaded += len(data_buffer)
+                    progress = downloaded / totalSize
+                    bar.step(progress)
+                    f.write(data_buffer)
+                Say().it("Download complete. :)")
+                return True
         except IOError as e:
             Say().it("Could not save file...\n%s" % e)
             uninstall()
@@ -242,29 +240,34 @@ class Repo(object):  # Repository for scripts
         return False
 
 
-class Metadata(object):  # Adding metadata
+class Startup(object):  # Adding Startup
 
     def __init__(self):
         self.scriptPath = mel.eval("internalVar -usd;")
         self.startPath = os.path.join(self.scriptPath, "userSetup.py")
-        self.installPath = os.path.join(self.scriptPath, "installed_scripts")
-        self.metadata = os.path.join(self.installPath, "metadata.json")
         if not os.path.exists(self.startPath):
             Say().it("Creating Startup file. userSetup.py")
             open(self.startPath, "w").close()  # Create blank file if one doesn't exist
-        if not os.path.exists(self.installPath):
-            os.makedirs(self.installPath)
-        self._extract()
 
-    def _extract(self):  # Inject new script into usersetup file
-        f = open(self.startPath, "r")
-        data = f.read()
-        f.close()
+    def _parse(self):  # Parse setup file
+        #parse = re.compile("## START[ \\t]+(\\w+)[ \\t]*(.*?)## END[ \\t]+\\1[ \\t]*", re.S)
+        search = r"\s*## START\s+(\w+)\s*"  # Opening tag
+        search += r"(.*?)"  # Content
+        search += r"## END\s+\1\s*"
+        parse = re.compile(search, re.S)
+        with open(self.startPath) as f:
+            data = f.read()
+        if data:
+            import pprint
+            pprint.pprint(dict((r[0], r[1]) for r in parse.findall(data)))
+
+    def _inject(self):  # Inject new script into usersetup file
+        with open(self.startPath, "r") as f:
+            data = f.read()
         reg = re.compile("[\n]*?## Automatically generated on \\d{4}-\\d{2}-\\d{2}.+?## End generation\\.\\n", re.S)
         data = "%s\n%s" % (reg.sub("", data), self._startupFile())
-        f = open(self.startPath, "w")
-        f.write(data)
-        f.close()
+        with open(self.startPath, "w") as f:
+            f.write(data)
 
     def _startupFile(self):
         return """
@@ -272,19 +275,25 @@ class Metadata(object):  # Adding metadata
 import json, sys
 sys.path.append("%s")
 try:
-    f = open("%s", "r")
-    for script in json.load(f):
-        exec script["startup"]
-    f.close()
+    with open("%s", "r") as f:
+        try:
+            for script in json.load(f):
+                exec script["startup"]
+        except KeyError:
+            pass
 except IOError:
-    print "metadata missing"
+    print "Startup missing"
 ## End generation.
-""" % (datetime.date.today(), self.installPath, self.metadata)
+""" % (datetime.date.today(), self.installPath, self.Startup)
+
+    def addMeta(self, data):
+        with open(self.Startup, "r") as f:
+            pass
 
 
 
 
-Metadata()
+Startup()._parse()
 
 
 def result(*thing):  # Just for testing.
