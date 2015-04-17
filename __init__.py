@@ -39,14 +39,17 @@ class Say(object):  # Logging output
     def __init__(self):
         self.output = []
 
-    def what(self, text):  # Register somewhere to output text
-        self.output.append(text)
+    def what(self, func):  # Register somewhere to output func
+        self.output.append(func)
 
     def it(self, message):
+        print self.output
         print message
         if self.output:
-            for out in self.output:
-                cmds.text(out, e=True, l="\n%s" % message)
+            for func in self.output:
+                print "out"
+                func(message)
+sayhold = Say()  # Keep Say alive
 
 
 ## DIALOGS
@@ -155,18 +158,50 @@ class MainWindow(object):
         cmds.setParent("..")
         self.GUI["content"]["layout3"] = cmds.columnLayout(adjustableColumn=True)
         self.GUI["content"]["text1"] = cmds.text(label="What would you like to do?", h=50)
-        self.GUI["content"]["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal")
-        self.GUI["content"]["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal")
+        self.GUI["content"]["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal", c=call(self._buildInstall))
+        self.GUI["content"]["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal", c=call(self._buildRemove))
         cmds.setParent("..")
         cmds.setParent(self.GUI["wrapper"])
 
+    def _buildInstall(self):  # Install UI
+        self._clearFrame()
+        self.GUI["content"]["layout1"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["content"]["progress1"] = cmds.progressBar(w=500)
+        self.GUI["content"]["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, h=500)
+        self.GUI["content"]["text1"] = cmds.text(label="", align="left")
+        cmds.setParent("..")
+        cmds.setParent(self.GUI["wrapper"])
+
+        def log(message):
+            try:
+                text = cmds.text(self.GUI["content"]["text1"], q=True, label=True)
+                text = "%s\n:>   %s" % (text, message)
+                cmds.text(self.GUI["content"]["text1"], e=True, label=text)
+                cmds.scrollLayout(self.GUI["content"]["layout2"], e=True, sp="down")
+                cmds.refresh(cv=True)
+            except RuntimeError:
+                pass
+
+        Say().what(log)
+        Say().it("Installing script...")
+        Say().it("\n")
+
+    def _buildRemove(self):  # Uninstall UI
+        self._clearFrame()
+        self.GUI["content"]["text1"] = cmds.text(label="REMOVAL WINDOW", p=self.GUI["wrapper"], h=50, w=100)
+
     def _clearFrame(self):  # Clear the UI
         if self.GUI["content"]:
-            for key, val in self.GUI["content"]:
-                cmds.deleteUI(val)
+            for key, val in self.GUI["content"].iteritems():
+                try:
+                    cmds.deleteUI(val)
+                except RuntimeError:
+                    pass
             self.GUI["content"] = {}
 
+
 MainWindow()
+
 
 ## FUNCTIONALITY
 
