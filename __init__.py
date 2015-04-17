@@ -137,6 +137,37 @@ class MultichoiceDialog(object):  # Choose an option
         self.callback(self.options[index])
 
 
+class MainWindow(object):
+
+    def __init__(self):
+        self.GUI = {}
+        self.GUI["content"] = {}
+        self.GUI["window"] = cmds.window(title="Script Installer", rtf=True, s=False, mnb=False, mxb=False, ret=True)
+        self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True)
+        cmds.showWindow(self.GUI["window"])
+        self._buildSelection()
+
+    def _buildSelection(self):
+        self._clearFrame()
+        self.GUI["content"]["layout1"] = cmds.rowColumnLayout(nc=2)
+        self.GUI["content"]["layout2"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["content"]["image1"] = cmds.iconTextStaticLabel(image="choice.svg", h=130, w=130)
+        cmds.setParent("..")
+        self.GUI["content"]["layout3"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["content"]["text1"] = cmds.text(label="What would you like to do?", h=50)
+        self.GUI["content"]["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal")
+        self.GUI["content"]["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal")
+        cmds.setParent("..")
+        cmds.setParent(self.GUI["wrapper"])
+
+    def _clearFrame(self):  # Clear the UI
+        if self.GUI["content"]:
+            for key, val in self.GUI["content"]:
+                cmds.deleteUI(val)
+            self.GUI["content"] = {}
+
+MainWindow()
+
 ## FUNCTIONALITY
 
 class Repo(object):  # Repository for scripts
@@ -290,10 +321,6 @@ except IOError:
         with open(self.Startup, "r") as f:
             pass
 
-
-
-
-Startup()._parse()
 
 
 def result(*thing):  # Just for testing.
