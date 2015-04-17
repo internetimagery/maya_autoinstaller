@@ -1,7 +1,7 @@
 # Automatically install script
 import maya.cmds as cmds
 import maya.mel as mel
-import time, sys, urllib2, json, re, zipfile, os, shutil, datetime
+import time, sys, urllib2, json, re, zipfile, os, shutil, datetime, traceback
 
 pluginInfo = {
     "name":    "clicktime",  # Name of the script file
@@ -299,18 +299,19 @@ class Install(object):
         self.tmpFile = os.tmpfile()
         self.cleanup = []  # List of items to remove afterwards
 
-    def __exit__(self, errType, errValue, traceback):
+    def __exit__(self, errType, errValue, trace):
         """
         Clean up after install, or if error occurrs
         """
         if errType:
             Say().it("Uh oh... there was a problem installing your script. :(")
             Say().it("%s :: %s" % (errType.__name__, errValue))
-            Say().it(traceback)
+            Say().it("\n".join(traceback.format_tb(trace)))
         Say().it("Cleaning up install.")
         if self.cleanup:
             for clean in self.cleanup:
                 if os.path.exists(clean):
+                    Say().it("Removing %s" % clean)
                     try:
                         os.remove(clean)
                     except OSError:
