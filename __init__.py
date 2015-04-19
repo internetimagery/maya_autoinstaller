@@ -1,17 +1,26 @@
 # Automatically install script
-import maya.cmds as cmds
-import maya.mel as mel
-import time, sys, urllib2, json, re, zipfile, os, shutil, datetime, traceback
+try:
+    import maya.cmds as cmds
+    import maya.mel as mel
+except ImportError:
+    import testMaya.cmds as cmds
+    pass
+import time, sys, urllib, json, re, zipfile, os, shutil, datetime, traceback, math
+from functools import wraps
+
 
 pluginInfo = {
     "name":    "clicktime",  # Name of the script file
-    "auto":    "import nothing",  # Command to add to userSetup if any
+    "auto":    "print \"hello\"",  # Command to add to userSetup if any
     "repo":    "shot_pieces",  # Repo to get script from
     "user":    "internetimagery"  # Username of repo
 }
 
 
 ## UTILITY CLASSES
+
+def getScriptPath():
+    return mel.eval("internalVar -usd;")
 
 
 def unique(item):
@@ -27,6 +36,7 @@ def unique(item):
     """
     items = {}
 
+    @wraps(item)
     def UniqueItem(*args, **kwargs):
         if (item in items and sys.getrefcount(items[item]) < 3) or item not in items:
             items[item] = item(*args, **kwargs)
@@ -83,8 +93,8 @@ class Say(object):
         try:
             for func in self.log["update"]:
                 func(progress)
-        except (KeyError, TypeError):
-            pass
+        except (KeyError, TypeError) as e:
+            print "Warning:", e
     """
     Output message
     >>> Say().it("ok")
@@ -96,8 +106,8 @@ class Say(object):
         try:
             for func in self.log["log"]:
                 func(message)
-        except (KeyError, TypeError):
-            pass
+        except (KeyError, TypeError) as e:
+            print "Warning:", e
 sayhold = Say()  # Keep Say alive
 
 
@@ -192,12 +202,6 @@ class MultichoiceDialog(object):  # Choose an option
 class MainWindow(object):
     """
     Main window. For selecting initial options and providing feedback
-    >>> win = MainWindow()
-    >>> if win.GUI["content"]:
-    ...     print "ok"
-    ok
-    >>> cmds.window(win, ex=True)
-    True
     """
     def __init__(self, title):
         self.GUI = {}
@@ -245,10 +249,7 @@ class MainWindow(object):
                 pass
 
         def update(progress):
-            processes = 6.0  # Number of processes that will try updating the bar
-            current = cmds.progressBar(self.GUI["progress1"], q=True, v=True)
-            next = progress / processes
-            cmds.progressBar(self.GUI["progress1"], e=True, v=current + next)
+            cmds.progressBar(self.GUI["content"]["progress1"], e=True, s=progress)
             cmds.refresh(cv=True)
 
         Say().what("log", log).what("update", update)
@@ -276,13 +277,37 @@ class MainWindow(object):
         Let the installation BEGIN!
         """
         with Install() as i:
-            print i.name
-            pass
+            operations = 100 / 3  # Number of operations
+            Say().it("Checking online for latest script.")
+            meta = i.getMetaInfo(i.repoUrl)
+            Say().it("Found version %s. Created on %s" % (meta["version"], meta["release"]))
+            Say().when(operations)
+
+            def downloadUpdate(progress):
+                Say().when(progress * operations)
+
+            Say().it("Downloading from %s." % meta["download"])
+            temp = i.download(meta["download"], downloadUpdate)
+            Say().it("Download Complete. :)")
+
+            Say().it("Extracting files.")
+            folder = i.unzip(temp)
+            Say().when(operations)
+
+            Say().it("Copying script into place.")
+            i.move(folder, i.scriptPath)
+            Say().when(operations)
+
+            print folder
 
 
 class Install(object):
     """
     Run through installation process
+
+    >>> a = Install()
+    >>> type(a) is Install
+    True
     """
     def __enter__(self):
         # Script provided Info
@@ -294,106 +319,82 @@ class Install(object):
 
         # Derived info
         self.repoUrl = "https://api.github.com/repos/%s/%s/releases/latest" % (self.user, self.repo)
-        scriptDir = mel.eval("internalVar -usd;")
+        scriptDir = getScriptPath()
         self.scriptPath = os.path.join(scriptDir, self.name)  # Place we will put the script
-        self.tmpFile = os.tmpfile()
         self.cleanup = []  # List of items to remove afterwards
+        return self
+
+    def getMetaInfo(self, url):
+        """
+        Get download information from Repo
+        """
+        u = urllib.urlopen(url)
+        data = json.load(u)
+        result = {}
+        result["version"] = data["tag_name"]
+        result["download"] = data["zipball_url"]
+        result["release"] = re.match("(\d{4}-\d{2}-\d{2})", data["published_at"]).group(1)
+        return result
+
+    def download(self, url, callback):
+        """
+        Download the specified file and provide updates to the callback
+        """
+
+        def update(i, block, size):
+            if i and size:
+                step = 1 / math.ceil(float(size) / block)
+                callback(step)
+            elif not size:
+                callback(1.0)
+
+        f = urllib.urlretrieve(url, None, update)[0]
+        self.cleanup.append(f)
+        return f
+
+    def unzip(self, src):
+        z = zipfile.ZipFile(src, "r")
+        tmp = os.path.dirname(src)
+        folder = os.path.join(tmp, z.namelist()[0])
+        z.extractall(tmp)
+        self.cleanup.append(folder)
+        return folder
+
+    def move(self, src, dest):
+        if os.path.exists(dest):
+            os.rmdir(dest)
+        shutil.move(src, dest)
+        return dest
+
+    def delete(self, path):
+        try:
+            if os.path.isfile(path):
+                os.remove(path)
+                Say().it("Deleting file %s." % path)
+            elif os.path.isdir(path):
+                os.rmdir(path)
+                Say().it("Removing folder %s." % path)
+        except OSError as e:
+            Say().it(e)
 
     def __exit__(self, errType, errValue, trace):
         """
         Clean up after install, or if error occurrs
         """
         if errType:
-            Say().it("Uh oh... there was a problem installing your script. :(")
+            Say().it("Uh oh... there was a problem. :(")
             Say().it("%s :: %s" % (errType.__name__, errValue))
             Say().it("\n".join(traceback.format_tb(trace)))
-        Say().it("Cleaning up install.")
+        Say().it("Cleaning up.")
         if self.cleanup:
             for clean in self.cleanup:
-                if os.path.exists(clean):
-                    Say().it("Removing %s" % clean)
-                    try:
-                        os.remove(clean)
-                    except OSError:
-                        os.rmdir(clean)
+                self.delete(clean)
         return True
-
-
-MainWindow(pluginInfo["name"])
 
 
 ## FUNCTIONALITY
 
 class Repo(object):  # Repository for scripts
-
-    def __init__(self, user, repo):
-        if user and repo:
-            baseurl = "https://api.github.com/repos/%s/%s/releases/latest" % (user, repo)
-            Say().it("Checking for latest script release")
-            try:
-                u = urllib2.urlopen(baseurl)
-                data = json.loads(u.read())
-                self.version = data["tag_name"]
-                self.downloadUrl = data["zipball_url"]
-                self.releaseDate = re.match("(\d{4}-\d{2}-\d{2})", data["published_at"]).group(1)
-                Say().it("Script found. Version %s. Created on %s." % (self.version, self.releaseDate))
-            except urllib2.HTTPError as e:
-                Say().it(e)
-                uninstall()
-
-    def download(self, path, name, callback):  # Perform checks on the URL and content for download
-        self.callback = callback
-        if os.path.exists(path):
-            temp = os.path.join(path, "temp_download")
-            final = os.path.join(path, name)
-            if not os.path.exists(temp):
-                os.makedirs(temp)
-            Say().it("Connecting to %s." % self.downloadUrl)
-            try:
-                zippath = os.path.join(temp, "temp.zip")
-                u = urllib2.urlopen(self.downloadUrl)
-                typeFilter = "application/zip"
-                meta = u.info()
-                fileType = meta.getheaders("Content-Type")
-                if fileType and typeFilter in fileType:
-                    fileSize = meta.getheaders("Content-Length")
-                    if fileSize:
-                        Say().it("File size determined.")
-                        if self._downloadProgress(u, zippath):  # Start actual download
-                            if self._unzip(zippath, final):  # Unzip file
-                                callback(final)
-                    else:
-                        Say().it("Failed to determine file size.")
-                        uninstall()
-                else:
-                    Say().it("File type is incorrect.")
-                    uninstall()
-
-            except urllib2.HTTPError as e:
-                Say().it("Something went wrong with the connection...\n%s" % e)
-                uninstall()
-
-    def _downloadProgress(self, request, path):
-        totalSize = int(request.info().getheaders("Content-Length")[0])
-        downloaded = 0.0
-        try:
-            with open(path, "wb") as f:
-                Say().it("Downloading.")
-                bar = ProgressBar()
-                while True:
-                    data_buffer = request.read(8192 / 4)
-                    if not data_buffer:
-                        break
-                    downloaded += len(data_buffer)
-                    progress = downloaded / totalSize
-                    bar.step(progress)
-                    f.write(data_buffer)
-                Say().it("Download complete. :)")
-                return True
-        except IOError as e:
-            Say().it("Could not save file...\n%s" % e)
-            uninstall()
-            return False
 
     def _unzip(self, src, dest):
         if os.path.exists(src):
@@ -476,7 +477,6 @@ except IOError:
             pass
 
 
-
 def result(*thing):  # Just for testing.
     Say().it(thing)
 
@@ -484,7 +484,8 @@ def result(*thing):  # Just for testing.
 def uninstall():  # Remove everything TODO: fill this in later... change name to cleanup class or something
     Say().it("Exiting")
 
-# Testing
-if __name__ == "__main__":
+if __name__ == "__main__":  # Are we testing?
     import doctest
     doctest.testmod()
+else:  # Run GUI
+    MainWindow(pluginInfo["name"])
