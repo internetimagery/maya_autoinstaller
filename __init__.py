@@ -198,7 +198,7 @@ class MainWindow(object):
         Let the installation BEGIN!
         """
         with Install() as i:
-            operations = 100 / 6  # Number of operations
+            operations = math.ceil(100.0 / 6)  # Number of operations
             Say().it("Checking online for latest script.")
             meta = i.getMetaInfo(i.repoUrl)
             Say().it("Found version %s. Created on %s" % (meta["version"], meta["release"]))
@@ -248,7 +248,7 @@ class MainWindow(object):
                 Say().it("Removing shelf icon.")
                 mayaShelf(u.shelf).delete(u.name, u.code)
 
-            Say().it("YAY! Uninstall complete!")
+        Say().it("YAY! Uninstall complete!")
 
 
 class Install(object):
