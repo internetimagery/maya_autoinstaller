@@ -12,6 +12,18 @@ with open(src, "r") as f:
 data = "print \"HELLO\""
 
 with open(dest, "w") as f:
+    f.write("""// Simple Script Installer. Created 20/04/2015 Jason Dixon.
+// Edit the below:
+
+$name = "clicktime"; // Name of script (folder)
+$shelf = "print \\"code here\\"";
+$auto = "print \\"hello\\""; // Code in userSetup (if any)
+$repo = "shot_pieces"; // Name of repo
+$user = "internetimagery"; // Owner of repo
+
+// DON'T CHANGE ANYTHING BELOW THIS LINE. :)
+
+""")
     f.write("python(\"")
     f.write(data.replace("\"", "\\\""))
     f.write("\");")

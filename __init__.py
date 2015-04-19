@@ -1,16 +1,13 @@
 # Automatically install script
-try:
-    import maya.cmds as cmds
-    import maya.mel as mel
-except ImportError:
-    import testMaya.cmds as cmds
-    pass
-import time, sys, urllib, json, re, zipfile, os, shutil, datetime, traceback, math
+import maya.cmds as cmds
+import maya.mel as mel
+import sys, urllib, json, re, zipfile, os, shutil, traceback, math
 from functools import wraps
 
-mel.eval(r"""
+mel.eval("""
 $name = "clicktime";
-$auto = "print \"hello\"";
+$shelf = "print \\"code here\\"";
+$auto = "print \\"hello\\"";
 $repo = "shot_pieces";
 $user = "internetimagery";
 """)
@@ -21,9 +18,11 @@ def getMelVars():
     var = {}
     var["scriptPath"] = mel.eval("internalVar -usd;")  # Script folder
     var["name"] = mel.eval("$tmp = $name")  # Name of the script (folder)
+    var["shelf"] = mel.eval("$tmp = $shelf")  # Script to put in a shelf button (if any)
     var["auto"] = mel.eval("$tmp = $auto")  # Code to put in userSetup (if any)
     var["repo"] = mel.eval("$tmp = $repo")  # Name of repo
     var["user"] = mel.eval("$tmp = $user")  # Owner of repo
+    var["shelfUI"] = mel.eval('$tmp = $gShelfTopLevel')  # UI element of the Maya shelf
     return var
 
 
@@ -108,8 +107,9 @@ class Say(object):
     def it(self, message):
         print message
         try:
-            for func in self.log["log"]:
-                func(message)
+            if self.log:
+                for func in self.log["log"]:
+                    func(message)
         except (KeyError, TypeError) as e:
             print "Warning:", e
 sayhold = Say()  # Keep Say alive
@@ -376,10 +376,58 @@ class userSetup(object):
             del self.code[key]
 
 
+class mayaShelf(object):
+    """
+    Access maya shelf and insert items.
+    """
+    def __init__(self):
+        data = getMelVars()
+        self.shelfUI = data["shelfUI"]
+        self.name = data["name"]
+        self.code = data["shelf"]
+
+    def add(self):
+        if "Confirm" == cmds.confirmDialog(title="Just checking...", message="Would you like to create a shelf icon in the current shelf?"):
+            self._addToShelf()
+
+    def delete(self):
+        if "Confirm" == cmds.confirmDialog(title="Just checking...", message="Would you like to remove the scripts shelf icons?"):
+            self._removeFromShelf()
+
+    def _addToShelf(self):
+        active = cmds.tabLayout(self.shelfUI, st=True, q=True)  # Grab active shelf
+        buttons = cmds.shelfLayout(active, q=True, ca=True)  # List all buttons in shelf
+        missing = True  # Shelf button exists here?
+        for b in buttons:
+            name = cmds.shelfButton(b, l=True, q=True)
+            if name == self.name:
+                cmds.shelfButton(b, e=True, c=self.code)
+                missing = False
+                Say().it("Updated existing shelf button.")
+        if missing:
+            cmds.shelfButton(label=self.name, c=self.code, image="daisyLarge.png", p=active)
+            Say().it("Created shelf button.")
+
+    def _removeFromShelf(self):
+        allShelf = cmds.tabLayout(self.shelfUI, ca=True, q=True)
+        for s in allShelf:
+            buttons = cmds.shelfLayout(s, q=True, ca=True)
+            if buttons:
+                for b in buttons:
+                    name = cmds.shelfButton(b, q=True, l=True)
+                    command = cmds.shelfButton(b, q=True, c=True)
+                    if name == self.name and command == self.code:
+                        Say().it("Removing %s." % b)
+                        cmds.deleteUI(b, ctl=True)
+
+mayaShelf().delete()
+
+
 if __name__ == "__main__":  # Are we testing?
     pass
     #import doctest
     #doctest.testmod()
 else:  # Run GUI
+    # info = getMelVars()
+    # MainWindow(info["name"])
     pass
-    #MainWindow(pluginInfo["name"])
