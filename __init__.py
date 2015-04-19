@@ -15,6 +15,9 @@ $user = "internetimagery";
 
 ## UTILITY CLASSES
 def getMelVars():
+    """
+    Grab user (and global) variables from Mel
+    """
     var = {}
     var["scriptPath"] = mel.eval("internalVar -usd;")  # Script folder
     var["name"] = mel.eval("$tmp = $name")  # Name of the script (folder)
@@ -29,13 +32,6 @@ def getMelVars():
 def unique(item):
     """
     Only keep one Class in memory at a time.
-    >>> @unique
-    ... class testClass(object):
-    ...     pass
-    >>> a = testClass()
-    >>> b = testClass()
-    >>> a is b
-    True
     """
     items = {}
 
@@ -50,10 +46,6 @@ def unique(item):
 class call(object):
     """
     Generic callback for buttons to pass values
-    >>> def testFunc(message):
-    ...     print message
-    >>> call(testFunc, "ok")()
-    ok
     """
     def __init__(self, func, *args, **kwargs):
             self.func = func
@@ -68,18 +60,11 @@ class call(object):
 class Say(object):
     """
     Logging output
-    >>> Say().it("ok")
-    ok
     """
     def __init__(self):
         self.log = {}
     """
     Register somewhere to show output and update progress
-    >>> def testFunc(message):
-    ...     print "it is " + message
-    >>> a = Say().what("log", testFunc)
-    >>> len(a.log["log"])
-    1
     """
     def what(self, name, func):
         self.log[name] = self.log.get(name, [])
@@ -87,10 +72,6 @@ class Say(object):
         return self
     """
     Update overall progress
-    >>> def testFuncTwo(prog):
-    ...     print prog
-    >>> Say().what("update", testFuncTwo).when(0.5)
-    0.5
     """
     def when(self, progress):
         try:
@@ -100,9 +81,6 @@ class Say(object):
             print "Warning:", e
     """
     Output message
-    >>> Say().it("ok")
-    ok
-    it is ok
     """
     def it(self, message):
         print message
@@ -130,6 +108,9 @@ class MainWindow(object):
         self._buildSelection()
 
     def _buildSelection(self):
+        """
+        Create Selection UI (main menu)
+        """
         self._clearFrame()
         self.GUI["content"]["layout1"] = cmds.columnLayout(adjustableColumn=True)
         self.GUI["content"]["text1"] = cmds.text(label="Features for %s." % self.title)
@@ -147,6 +128,9 @@ class MainWindow(object):
         cmds.setParent(self.GUI["wrapper"])
 
     def _buildInstall(self):  # Install UI
+        """
+        Create Install UI
+        """
         self._clearFrame()
         self.GUI["content"]["layout1"] = cmds.columnLayout(adjustableColumn=True)
         self.GUI["content"]["progress1"] = cmds.progressBar(w=500)
@@ -177,12 +161,18 @@ class MainWindow(object):
         self._install()
 
     def _buildRemove(self):  # Uninstall UI
+        """
+        Create Uninstall UI
+        """
         self._clearFrame()
         self.GUI["content"]["text1"] = cmds.text(label="REMOVAL WINDOW", p=self.GUI["wrapper"], h=50, w=100)
 
         self._uninstall()
 
     def _clearFrame(self):  # Clear the UI
+        """
+        Clear UI for next build
+        """
         if self.GUI["content"]:
             for key, val in self.GUI["content"].iteritems():
                 try:
@@ -196,7 +186,7 @@ class MainWindow(object):
         Let the installation BEGIN!
         """
         with Install() as i:
-            operations = 100 / 5  # Number of operations
+            operations = 100 / 6  # Number of operations
             Say().it("Checking online for latest script.")
             meta = i.getMetaInfo(i.repoUrl)
             Say().it("Found version %s. Created on %s" % (meta["version"], meta["release"]))
@@ -223,6 +213,11 @@ class MainWindow(object):
                     u.add(i.name, i.auto)
             Say().when(operations)
 
+            if i.code:
+                Say().it("Adding shelf button to current shelf.")
+                mayaShelf(i.shelf).add(i.name, i.code)
+            Say().when(operations)
+
             Say().it("Install Complete!")
 
     def _uninstall(self):
@@ -234,24 +229,24 @@ class MainWindow(object):
             if u.auto:
                 with userSetup() as s:
                     s.delete(u.name)
+            if u.code:
+                mayaShelf(u.shelf).delete(u.name, u.code)
 
 
 class Install(object):
     """
     Run through installation process
-
-    >>> a = Install()
-    >>> type(a) is Install
-    True
     """
     def __enter__(self):
         # Script provided Info
         pluginInfo = getMelVars()
         self.name = pluginInfo["name"]  # Name of script
+        self.code = pluginInfo["shelf"]  # Code to put in a shelf icon.
         self.auto = pluginInfo["auto"]  # Code to put in userSetup
         self.repo = pluginInfo["repo"]  # name of Repository
         self.user = pluginInfo["user"]  # user of Repository
         scriptDir = pluginInfo["scriptPath"]  # Path to scripts
+        self.shelf = mel.eval('$tmp = $gShelfTopLevel')  # UI element of the Maya shelf
 
         # Derived info
         self.repoUrl = "https://api.github.com/repos/%s/%s/releases/latest" % (self.user, self.repo)
@@ -380,47 +375,40 @@ class mayaShelf(object):
     """
     Access maya shelf and insert items.
     """
-    def __init__(self):
-        data = getMelVars()
-        self.shelfUI = data["shelfUI"]
-        self.name = data["name"]
-        self.code = data["shelf"]
+    def __init__(self, shelf):
+        self.shelf = shelf
 
-    def add(self):
-        if "Confirm" == cmds.confirmDialog(title="Just checking...", message="Would you like to create a shelf icon in the current shelf?"):
-            self._addToShelf()
+    def add(self, name, code):
+        self._addToShelf(name, code)
 
-    def delete(self):
-        if "Confirm" == cmds.confirmDialog(title="Just checking...", message="Would you like to remove the scripts shelf icons?"):
-            self._removeFromShelf()
+    def delete(self, name, code):
+        self._removeFromShelf()
 
-    def _addToShelf(self):
-        active = cmds.tabLayout(self.shelfUI, st=True, q=True)  # Grab active shelf
+    def _addToShelf(self, name, code):
+        active = cmds.tabLayout(self.shelf, st=True, q=True)  # Grab active shelf
         buttons = cmds.shelfLayout(active, q=True, ca=True)  # List all buttons in shelf
         missing = True  # Shelf button exists here?
         for b in buttons:
-            name = cmds.shelfButton(b, l=True, q=True)
-            if name == self.name:
-                cmds.shelfButton(b, e=True, c=self.code)
+            label = cmds.shelfButton(b, l=True, q=True)
+            if label == name:
+                cmds.shelfButton(b, e=True, c=code)
                 missing = False
                 Say().it("Updated existing shelf button.")
         if missing:
-            cmds.shelfButton(label=self.name, c=self.code, image="daisyLarge.png", p=active)
+            cmds.shelfButton(label=name, c=code, image="daisyLarge.png", p=active)
             Say().it("Created shelf button.")
 
-    def _removeFromShelf(self):
-        allShelf = cmds.tabLayout(self.shelfUI, ca=True, q=True)
+    def _removeFromShelf(self, name, code):
+        allShelf = cmds.tabLayout(self.shelf, ca=True, q=True)
         for s in allShelf:
             buttons = cmds.shelfLayout(s, q=True, ca=True)
             if buttons:
                 for b in buttons:
-                    name = cmds.shelfButton(b, q=True, l=True)
+                    label = cmds.shelfButton(b, q=True, l=True)
                     command = cmds.shelfButton(b, q=True, c=True)
-                    if name == self.name and command == self.code:
-                        Say().it("Removing %s." % b)
+                    if label == name and command == code:
+                        Say().it("Removing shelf button: %s." % b)
                         cmds.deleteUI(b, ctl=True)
-
-mayaShelf().delete()
 
 
 if __name__ == "__main__":  # Are we testing?
