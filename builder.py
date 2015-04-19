@@ -4,7 +4,7 @@ import os
 path = os.path.dirname(os.path.realpath(__file__))
 
 src = os.path.join(path, "__init__.py")
-src = os.path.join(path, "test.py")
+#src = os.path.join(path, "test.py")
 dest = os.path.join(path, "build.mel")
 
 with open(src, "r") as f:
