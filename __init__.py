@@ -8,19 +8,23 @@ except ImportError:
 import time, sys, urllib, json, re, zipfile, os, shutil, datetime, traceback, math
 from functools import wraps
 
-
-pluginInfo = {
-    "name":    "clicktime",  # Name of the script file
-    "auto":    "print \"hello\"",  # Command to add to userSetup if any
-    "repo":    "shot_pieces",  # Repo to get script from
-    "user":    "internetimagery"  # Username of repo
-}
+mel.eval(r"""
+$name = "clicktime";
+$auto = "print \"hello\"";
+$repo = "shot_pieces";
+$user = "internetimagery";
+""")
 
 
 ## UTILITY CLASSES
-
-def getScriptPath():
-    return mel.eval("internalVar -usd;")
+def getMelVars():
+    var = {}
+    var["scriptPath"] = mel.eval("internalVar -usd;")  # Script folder
+    var["name"] = mel.eval("$tmp = $name")  # Name of the script (folder)
+    var["auto"] = mel.eval("$tmp = $auto")  # Code to put in userSetup (if any)
+    var["repo"] = mel.eval("$tmp = $repo")  # Name of repo
+    var["user"] = mel.eval("$tmp = $user")  # Owner of repo
+    return var
 
 
 def unique(item):
@@ -111,6 +115,7 @@ class Say(object):
 sayhold = Say()  # Keep Say alive
 
 
+## Functionality
 class MainWindow(object):
     """
     Main window. For selecting initial options and providing feedback
@@ -175,6 +180,8 @@ class MainWindow(object):
         self._clearFrame()
         self.GUI["content"]["text1"] = cmds.text(label="REMOVAL WINDOW", p=self.GUI["wrapper"], h=50, w=100)
 
+        self._uninstall()
+
     def _clearFrame(self):  # Clear the UI
         if self.GUI["content"]:
             for key, val in self.GUI["content"].iteritems():
@@ -189,7 +196,7 @@ class MainWindow(object):
         Let the installation BEGIN!
         """
         with Install() as i:
-            operations = 100 / 3  # Number of operations
+            operations = 100 / 5  # Number of operations
             Say().it("Checking online for latest script.")
             meta = i.getMetaInfo(i.repoUrl)
             Say().it("Found version %s. Created on %s" % (meta["version"], meta["release"]))
@@ -211,8 +218,23 @@ class MainWindow(object):
             Say().when(operations)
 
             if i.auto:
-                pass
+                Say().it("Adding startup code.")
+                with userSetup as u:
+                    u.add(i.name, i.auto)
             Say().when(operations)
+
+            Say().it("Install Complete!")
+
+    def _uninstall(self):
+        """
+        Remove script...
+        """
+        with Install() as u:
+            u.cleanup.append(u.scriptPath)
+            if u.auto:
+                with userSetup() as s:
+                    s.delete(u.name)
+
 
 class Install(object):
     """
@@ -224,15 +246,15 @@ class Install(object):
     """
     def __enter__(self):
         # Script provided Info
-        global pluginInfo
+        pluginInfo = getMelVars()
         self.name = pluginInfo["name"]  # Name of script
         self.auto = pluginInfo["auto"]  # Code to put in userSetup
         self.repo = pluginInfo["repo"]  # name of Repository
         self.user = pluginInfo["user"]  # user of Repository
+        scriptDir = pluginInfo["scriptPath"]  # Path to scripts
 
         # Derived info
         self.repoUrl = "https://api.github.com/repos/%s/%s/releases/latest" % (self.user, self.repo)
-        scriptDir = getScriptPath()
         self.scriptPath = os.path.join(scriptDir, self.name)  # Place we will put the script
         self.cleanup = []  # List of items to remove afterwards
         return self
@@ -310,107 +332,54 @@ class userSetup(object):
     Modfiy the startup script
     """
     def __init__(self):
-        self.path = os.path.join(getScriptPath(), "userSetup.py")
-        if os.path.exists(self.path):
-            with open(self.path, "r") as f:
-                self.data = f.read()
+        path = getMelVars()
+        self._path = os.path.join(path["scriptPath"], "userSetup.py")
+        if os.path.exists(self._path):
+            with open(self._path, "r") as f:
+                self._data = f.read()
         else:
-            self.data = ""
-        self._parse()
+            self._data = ""
 
-    def _parse(self):
-        search = r"\s*## START\s+(\w+)\s*"  # Opening tag
+    def __enter__(self):
+        search = r"\s*# # START\s+(\w+)\s*"  # Opening tag
         search += r"(.*?)"  # Content
-        search += r"\s*## END\s+\1\s*"  # Close tag
+        search += r"\s*# # END\s+\1\s*"  # Close tag
         parse = re.compile(search, re.S)
         self.code = {}
         subpos = 0
         newData = ""
-        for find in parse.finditer(self.data):
+        for find in parse.finditer(self._data):
             self.code[find.group(1)] = find.group(2)
             pos = find.span()
-            newData += "\n" + self.data[subpos:pos[0]]
+            newData += self._data[subpos:pos[0]] + "\n"
             subpos = pos[1]
-        newData += "\n" + self.data[subpos:len(self.data)]
-        self.data = newData
+        newData += self._data[subpos:len(self._data)]
+        self._data = newData
+        return self
 
-    def _build(self):
+    def __exit__(self, type, err, trace):
         for k in self.code:
             codeblock = """
-## START %s
+# # START %s
 %s
-## END %s
+# # END %s
 """ % (k, self.code[k], k)
-            print codeblock
+            self._data += codeblock
+        with open(self._path, "w") as f:
+            f.write(self._data)
 
+    def add(self, key, val):
+        self.code[key] = val
 
-    def add(self, code):
-        pass
+    def delete(self, key):
+        if key in self.code:
+            del self.code[key]
 
-userSetup()._build()
-
-
-class Startup(object):  # Adding Startup
-
-    def __init__(self):
-        self.scriptPath = mel.eval("internalVar -usd;")
-        self.startPath = os.path.join(self.scriptPath, "userSetup.py")
-        if not os.path.exists(self.startPath):
-            Say().it("Creating Startup file. userSetup.py")
-            open(self.startPath, "w").close()  # Create blank file if one doesn't exist
-
-    def _parse(self):  # Parse setup file
-        #parse = re.compile("## START[ \\t]+(\\w+)[ \\t]*(.*?)## END[ \\t]+\\1[ \\t]*", re.S)
-        search = r"\s*## START\s+(\w+)\s*"  # Opening tag
-        search += r"(.*?)"  # Content
-        search += r"## END\s+\1\s*"
-        parse = re.compile(search, re.S)
-        with open(self.startPath) as f:
-            data = f.read()
-        if data:
-            import pprint
-            pprint.pprint(dict((r[0], r[1]) for r in parse.findall(data)))
-
-    def _inject(self):  # Inject new script into usersetup file
-        with open(self.startPath, "r") as f:
-            data = f.read()
-        reg = re.compile("[\n]*?## Automatically generated on \\d{4}-\\d{2}-\\d{2}.+?## End generation\\.\\n", re.S)
-        data = "%s\n%s" % (reg.sub("", data), self._startupFile())
-        with open(self.startPath, "w") as f:
-            f.write(data)
-
-    def _startupFile(self):
-        return """
-## Automatically generated on %s
-import json, sys
-sys.path.append("%s")
-try:
-    with open("%s", "r") as f:
-        try:
-            for script in json.load(f):
-                exec script["startup"]
-        except KeyError:
-            pass
-except IOError:
-    print "Startup missing"
-## End generation.
-""" % (datetime.date.today(), self.installPath, self.Startup)
-
-    def addMeta(self, data):
-        with open(self.Startup, "r") as f:
-            pass
-
-
-def result(*thing):  # Just for testing.
-    Say().it(thing)
-
-
-def uninstall():  # Remove everything TODO: fill this in later... change name to cleanup class or something
-    Say().it("Exiting")
 
 if __name__ == "__main__":  # Are we testing?
-    import doctest
-    doctest.testmod()
+    pass
+    #import doctest
+    #doctest.testmod()
 else:  # Run GUI
     pass
     #MainWindow(pluginInfo["name"])
