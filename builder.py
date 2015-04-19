@@ -25,8 +25,5 @@ $user = "internetimagery"; // Owner of repo
 
 """)
     f.write("python(\"")
-    data = data.replace("\\", "\\\\")
-    data = data.replace("\"", "\\\"")
-    data = data.replace("\n", r"\n")
-    f.write(data)
+    f.write(data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", r"\n"))
     f.write("\");")

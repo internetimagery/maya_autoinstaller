@@ -1,16 +1,16 @@
 # Automatically install script
+from functools import wraps
 import maya.cmds as cmds
 import maya.mel as mel
-import sys, urllib, json, re, zipfile, os, shutil, traceback, math
-from functools import wraps
-
-mel.eval("""
-$name = "clicktime";
-$shelf = "print \\"code here\\"";
-$auto = "print \\"hello\\"";
-$repo = "shot_pieces";
-$user = "internetimagery";
-""")
+import traceback
+import zipfile
+import urllib
+import shutil
+import json
+import math
+import sys
+import re
+import os
 
 
 ## UTILITY CLASSES
@@ -290,10 +290,10 @@ class Install(object):
         """
 
         def update(i, block, size):
-            if i and size:
+            if i and size > 0:
                 step = 1 / math.ceil(float(size) / block)
                 callback(step)
-            elif not size:
+            elif size < 0:
                 callback(1.0)
 
         f = urllib.urlretrieve(url, None, update)[0]
@@ -429,11 +429,15 @@ class mayaShelf(object):
                         cmds.deleteUI(b, ctl=True)
 
 
-if __name__ == "__main__":  # Are we testing?
-    pass
-    #import doctest
-    #doctest.testmod()
-else:  # Run GUI
+if __name__ == "__main__":  # Are we running by being dragged into maya?
     info = getMelVars()
     MainWindow(info["name"])
-    pass
+else:  # Else we're running in maya window normally. Lets set up some test variables
+    mel.eval("""
+    $name = "testScript";
+    $shelf = "print \\"code here\\"";
+    $auto = "print \\"hello\\"";
+    $repo = "shot_pieces";
+    $user = "internetimagery";
+    """)
+    MainWindow("testScript")
