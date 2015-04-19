@@ -101,7 +101,6 @@ class MainWindow(object):
     def __init__(self, title):
         self.GUI = {}
         self.title = title
-        self.GUI["content"] = {}
         self.GUI["window"] = cmds.window(title="Script Installer", rtf=True, s=False, mnb=False, mxb=False, ret=True)
         self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True)
         cmds.showWindow(self.GUI["window"])
@@ -112,17 +111,17 @@ class MainWindow(object):
         Create Selection UI (main menu)
         """
         self._clearFrame()
-        self.GUI["content"]["layout1"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["content"]["text1"] = cmds.text(label="Features for %s." % self.title)
+        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["text1"] = cmds.text(label="Features for %s." % self.title)
         cmds.separator()
-        self.GUI["content"]["layout2"] = cmds.rowColumnLayout(nc=2)
-        self.GUI["content"]["layout3"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["content"]["image1"] = cmds.iconTextStaticLabel(image="choice.svg", h=130, w=130)
+        self.GUI["layout2"] = cmds.rowColumnLayout(nc=2)
+        self.GUI["layout3"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["image1"] = cmds.iconTextStaticLabel(image="choice.svg", h=130, w=130)
         cmds.setParent("..")
-        self.GUI["content"]["layout4"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["content"]["text2"] = cmds.text(label="What would you like to do?", h=50)
-        self.GUI["content"]["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal", c=call(self._buildInstall))
-        self.GUI["content"]["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal", c=call(self._buildRemove))
+        self.GUI["layout4"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["text2"] = cmds.text(label="What would you like to do?", h=50)
+        self.GUI["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal", c=call(self._buildInstall))
+        self.GUI["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal", c=call(self._buildRemove))
         cmds.setParent("..")
         cmds.setParent("..")
         cmds.setParent(self.GUI["wrapper"])
@@ -132,25 +131,25 @@ class MainWindow(object):
         Create Install UI
         """
         self._clearFrame()
-        self.GUI["content"]["layout1"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["content"]["progress1"] = cmds.progressBar(w=500)
-        self.GUI["content"]["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, h=500)
-        self.GUI["content"]["text1"] = cmds.text(label="", align="left")
+        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["progress1"] = cmds.progressBar(w=500)
+        self.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, h=300)
+        self.GUI["text1"] = cmds.text(label="", align="left")
         cmds.setParent("..")
         cmds.setParent(self.GUI["wrapper"])
 
         def log(message):
             try:
-                text = cmds.text(self.GUI["content"]["text1"], q=True, label=True)
+                text = cmds.text(self.GUI["text1"], q=True, label=True)
                 text = "%s\n:>   %s" % (text, message)
-                cmds.text(self.GUI["content"]["text1"], e=True, label=text)
-                cmds.scrollLayout(self.GUI["content"]["layout2"], e=True, sp="down")
+                cmds.text(self.GUI["text1"], e=True, label=text)
+                cmds.scrollLayout(self.GUI["layout2"], e=True, sp="down")
                 cmds.refresh(cv=True)
             except RuntimeError:
                 pass
 
         def update(progress):
-            cmds.progressBar(self.GUI["content"]["progress1"], e=True, s=progress)
+            cmds.progressBar(self.GUI["progress1"], e=True, s=progress)
             cmds.refresh(cv=True)
 
         Say().what("log", log).what("update", update)
@@ -165,21 +164,34 @@ class MainWindow(object):
         Create Uninstall UI
         """
         self._clearFrame()
-        self.GUI["content"]["text1"] = cmds.text(label="REMOVAL WINDOW", p=self.GUI["wrapper"], h=50, w=100)
+        self.GUI["text1"] = cmds.text(label="Uninstalling Script.", p=self.GUI["wrapper"], h=50, w=400)
+        self.GUI["layout1"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, h=200)
+        self.GUI["text2"] = cmds.text(label="", align="left")
+        cmds.setParent("..")
+        cmds.setParent(self.GUI["wrapper"])
 
+        def log(message):
+            try:
+                text = cmds.text(self.GUI["text2"], q=True, label=True)
+                text = "%s\n:>   %s" % (text, message)
+                cmds.text(self.GUI["text2"], e=True, label=text)
+                cmds.scrollLayout(self.GUI["layout1"], e=True, sp="down")
+                cmds.refresh(cv=True)
+            except RuntimeError:
+                pass
+
+        Say().what("log", log)
+        Say().it("Removing Script.")
         self._uninstall()
 
     def _clearFrame(self):  # Clear the UI
         """
         Clear UI for next build
         """
-        if self.GUI["content"]:
-            for key, val in self.GUI["content"].iteritems():
-                try:
-                    cmds.deleteUI(val)
-                except RuntimeError:
-                    pass
-            self.GUI["content"] = {}
+        self.GUI["wrapper"] = self.GUI.get("wrapper", "")
+        if cmds.layout(self.GUI["wrapper"], ex=True):
+            cmds.deleteUI(self.GUI["wrapper"])
+        self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True, p=self.GUI["window"])
 
     def _install(self):
         """
@@ -209,7 +221,7 @@ class MainWindow(object):
 
             if i.auto:
                 Say().it("Adding startup code.")
-                with userSetup as u:
+                with userSetup() as u:
                     u.add(i.name, i.auto)
             Say().when(operations)
 
@@ -225,12 +237,18 @@ class MainWindow(object):
         Remove script...
         """
         with Install() as u:
+
+            Say().it("Removing Script files.")
             u.cleanup.append(u.scriptPath)
             if u.auto:
+                Say().it("Cleaning userSetup.")
                 with userSetup() as s:
                     s.delete(u.name)
             if u.code:
+                Say().it("Removing shelf icon.")
                 mayaShelf(u.shelf).delete(u.name, u.code)
+
+            Say().it("YAY! Uninstall complete!")
 
 
 class Install(object):
@@ -292,7 +310,7 @@ class Install(object):
 
     def move(self, src, dest):
         if os.path.exists(dest):
-            os.rmdir(dest)
+            self.delete(dest)
         shutil.move(src, dest)
         return dest
 
@@ -300,10 +318,10 @@ class Install(object):
         try:
             if os.path.isfile(path):
                 os.remove(path)
-                Say().it("Deleting file %s." % path)
+                Say().it("Deleting file %s" % path)
             elif os.path.isdir(path):
-                os.rmdir(path)
-                Say().it("Removing folder %s." % path)
+                shutil.rmtree(path)
+                Say().it("Removing folder %s" % path)
         except OSError as e:
             Say().it(e)
 
@@ -382,7 +400,7 @@ class mayaShelf(object):
         self._addToShelf(name, code)
 
     def delete(self, name, code):
-        self._removeFromShelf()
+        self._removeFromShelf(name, code)
 
     def _addToShelf(self, name, code):
         active = cmds.tabLayout(self.shelf, st=True, q=True)  # Grab active shelf
@@ -416,6 +434,6 @@ if __name__ == "__main__":  # Are we testing?
     #import doctest
     #doctest.testmod()
 else:  # Run GUI
-    # info = getMelVars()
-    # MainWindow(info["name"])
+    info = getMelVars()
+    MainWindow(info["name"])
     pass
