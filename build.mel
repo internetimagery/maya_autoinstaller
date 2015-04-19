@@ -1,9 +1,9 @@
 // Simple Script Installer. Created 20/04/2015 Jason Dixon.
 // Edit the below:
 
-$name = "clicktime"; // Name of script (folder)
-$shelf = "print \"code here\"";
-$auto = "print \"hello\""; // Code in userSetup (if any)
+$name = "testscript"; // Name of script (folder)
+$shelf = "print \"Shelf Works.\""; // Code to go in a shelf icon (if any)
+$auto = "print \"This should be visible if it works.\""; // Code in userSetup (if any)
 $repo = "shot_pieces"; // Name of repo
 $user = "internetimagery"; // Owner of repo
 
