@@ -63,6 +63,7 @@ class Say(object):
     """
     def __init__(self):
         self.log = {}
+        self.prog = 0.0  # Progress. 0 - 100
     """
     Register somewhere to show output and update progress
     """
@@ -74,9 +75,12 @@ class Say(object):
     Update overall progress
     """
     def when(self, progress):
+        self.prog += progress
+        self.prog = 0 if self.prog < 0 else self.prog
+        self.prog = 100 if 100 < self.prog else self.prog
         try:
             for func in self.log["update"]:
-                func(progress)
+                func(self.prog)
         except (KeyError, TypeError) as e:
             print "Warning:", e
     """
@@ -132,7 +136,7 @@ class MainWindow(object):
         """
         self._clearFrame()
         self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["progress1"] = cmds.progressBar(w=500)
+        self.GUI["progress1"] = cmds.progressBar(w=500, s=0)
         self.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, h=300)
         self.GUI["text1"] = cmds.text(label="", align="left")
         cmds.setParent("..")
@@ -149,7 +153,7 @@ class MainWindow(object):
                 pass
 
         def update(progress):
-            cmds.progressBar(self.GUI["progress1"], e=True, s=progress)
+            cmds.progressBar(self.GUI["progress1"], e=True, pr=progress)
             cmds.refresh(cv=True)
 
         Say().what("log", log).what("update", update)
@@ -435,10 +439,10 @@ if __name__ == "__main__":  # Are we running by being dragged into maya?
     MainWindow(info["name"])
 else:  # Else we're running in maya window normally. Lets set up some test variables
     mel.eval("""
-    $name = "testScript";
-    $shelf = "print \\"code here\\"";
-    $auto = "print \\"hello\\"";
-    $repo = "shot_pieces";
+    $name = "testscript";
+    $shelf = "print \\"Shelf Works.\\"";
+    $auto = "print \\"This should be visible if it works.\\"";
+    $repo = "license_fix";
     $user = "internetimagery";
     """)
-    MainWindow("testScript")
+    MainWindow("testscript")
