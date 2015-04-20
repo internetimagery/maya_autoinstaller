@@ -22,8 +22,7 @@ $repo = "shot_pieces"; // Name of repo
 $user = "internetimagery"; // Owner of repo
 
 // DON'T CHANGE ANYTHING BELOW THIS LINE. :)
-
 """ % datetime.date.today())
-    f.write("python(\"")
-    f.write(data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", r"\n"))
-    f.write("\");")
+    f.write("""
+python("%s");
+""" % data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", r"\n"))
