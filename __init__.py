@@ -383,6 +383,7 @@ class userSetup(object):
 
     def add(self, key, val):
         self.code[key] = val
+        exec val
 
     def delete(self, key):
         if key in self.code:
