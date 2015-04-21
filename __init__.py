@@ -105,8 +105,9 @@ class MainWindow(object):
     def __init__(self, title):
         self.GUI = {}
         self.title = title
+        self.width = 500  # Width of window
         self.GUI["window"] = cmds.window(title="Script Installer", rtf=True, s=False, mnb=False, mxb=False, ret=True)
-        self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
         cmds.showWindow(self.GUI["window"])
         self._buildSelection()
 
@@ -115,7 +116,7 @@ class MainWindow(object):
         Create Selection UI (main menu)
         """
         self._clearFrame()
-        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True)
+        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
         self.GUI["text1"] = cmds.text(label="Features for %s." % self.title)
         cmds.separator()
         self.GUI["layout2"] = cmds.rowColumnLayout(nc=2)
@@ -135,9 +136,9 @@ class MainWindow(object):
         Create Install UI
         """
         self._clearFrame()
-        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["progress1"] = cmds.progressBar(w=500, s=0)
-        self.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, h=300)
+        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
+        self.GUI["progress1"] = cmds.progressBar(w=self.width, s=0)
+        self.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, w=self.width, h=200)
         self.GUI["text1"] = cmds.text(label="", align="left")
         cmds.setParent("..")
         cmds.setParent(self.GUI["wrapper"])
@@ -168,8 +169,9 @@ class MainWindow(object):
         Create Uninstall UI
         """
         self._clearFrame()
+        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
         self.GUI["text1"] = cmds.text(label="Uninstalling Script.", p=self.GUI["wrapper"], h=50, w=400)
-        self.GUI["layout1"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, h=200)
+        self.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, w=self.width, h=200)
         self.GUI["text2"] = cmds.text(label="", align="left")
         cmds.setParent("..")
         cmds.setParent(self.GUI["wrapper"])
@@ -179,7 +181,7 @@ class MainWindow(object):
                 text = cmds.text(self.GUI["text2"], q=True, label=True)
                 text = "%s\n:>   %s" % (text, message)
                 cmds.text(self.GUI["text2"], e=True, label=text)
-                cmds.scrollLayout(self.GUI["layout1"], e=True, sp="down")
+                cmds.scrollLayout(self.GUI["layout2"], e=True, sp="down")
                 cmds.refresh(cv=True)
             except RuntimeError:
                 pass
@@ -358,7 +360,7 @@ class userSetup(object):
             self._data = ""
 
     def __enter__(self):
-        search = r"\s*# # START\s+(\w+)\s*"  # Opening tag
+        search = r"\s*?# # START\s+(\w+)\s*"  # Opening tag
         search += r"(.*?)"  # Content
         search += r"\s*# # END\s+\1\s*"  # Close tag
         parse = re.compile(search, re.S)
@@ -370,7 +372,7 @@ class userSetup(object):
             pos = find.span()
             newData += self._data[subpos:pos[0]] + "\n"
             subpos = pos[1]
-        newData += self._data[subpos:len(self._data)]
+        newData += self._data[subpos:len(self._data)] + "\n"
         self._data = newData
         return self
 
