@@ -47,13 +47,13 @@ class call(object):
     """
     Generic callback for buttons to pass values
     """
-    def __init__(self, func, *args, **kwargs):
-            self.func = func
-            self.args = args
-            self.kwargs = kwargs
+    def __init__(s, func, *args, **kwargs):
+            s.func = func
+            s.args = args
+            s.kwargs = kwargs
 
-    def __call__(self, *args):
-            return self.func(*self.args, **self.kwargs)
+    def __call__(s, *args):
+            return s.func(*s.args, **s.kwargs)
 
 
 @unique
@@ -61,36 +61,36 @@ class Say(object):
     """
     Logging output
     """
-    def __init__(self):
-        self.log = {}
-        self.prog = 0.0  # Progress. 0 - 100
+    def __init__(s):
+        s.log = {}
+        s.prog = 0.0  # Progress. 0 - 100
     """
     Register somewhere to show output and update progress
     """
-    def what(self, name, func):
-        self.log[name] = self.log.get(name, [])
-        self.log[name].append(func)
-        return self
+    def what(s, name, func):
+        s.log[name] = s.log.get(name, [])
+        s.log[name].append(func)
+        return s
     """
     Update overall progress
     """
-    def when(self, progress):
-        self.prog += progress
-        self.prog = 0 if self.prog < 0 else self.prog
-        self.prog = 100 if 100 < self.prog else self.prog
+    def when(s, progress):
+        s.prog += progress
+        s.prog = 0 if s.prog < 0 else s.prog
+        s.prog = 100 if 100 < s.prog else s.prog
         try:
-            for func in self.log["update"]:
-                func(self.prog)
+            for func in s.log["update"]:
+                func(s.prog)
         except (KeyError, TypeError) as e:
             print "Warning:", e
     """
     Output message
     """
-    def it(self, message):
+    def it(s, message):
         print message
         try:
-            if self.log:
-                for func in self.log["log"]:
+            if s.log:
+                for func in s.log["log"]:
                     func(message)
         except (KeyError, TypeError) as e:
             print "Warning:", e
@@ -102,59 +102,59 @@ class MainWindow(object):
     """
     Main window. For selecting initial options and providing feedback
     """
-    def __init__(self, title):
-        self.GUI = {}
-        self.title = title
-        self.width = 500  # Width of window
-        self.GUI["window"] = cmds.window(title="Script Installer", rtf=True, s=False, mnb=False, mxb=False, ret=True)
-        self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
-        cmds.showWindow(self.GUI["window"])
-        self._buildSelection()
+    def __init__(s, title):
+        s.GUI = {}
+        s.title = title
+        s.width = 500  # Width of window
+        s.GUI["window"] = cmds.window(title="Script Installer", rtf=True, s=False, mnb=False, mxb=False, ret=True)
+        s.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True, w=s.width)
+        cmds.showWindow(s.GUI["window"])
+        s._buildSelection()
 
-    def _buildSelection(self):
+    def _buildSelection(s):
         """
         Create Selection UI (main menu)
         """
-        self._clearFrame()
-        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
-        self.GUI["text1"] = cmds.text(label="Features for %s." % self.title)
+        s._clearFrame()
+        s.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=s.width)
+        s.GUI["text1"] = cmds.text(label="Features for %s." % s.title)
         cmds.separator()
-        self.GUI["layout2"] = cmds.rowColumnLayout(nc=2)
-        self.GUI["layout3"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["image1"] = cmds.iconTextStaticLabel(image="choice.svg", h=130, w=130)
+        s.GUI["layout2"] = cmds.rowColumnLayout(nc=2)
+        s.GUI["layout3"] = cmds.columnLayout(adjustableColumn=True)
+        s.GUI["image1"] = cmds.iconTextStaticLabel(image="choice.svg", h=130, w=130)
         cmds.setParent("..")
-        self.GUI["layout4"] = cmds.columnLayout(adjustableColumn=True)
-        self.GUI["text2"] = cmds.text(label="What would you like to do?", h=50)
-        self.GUI["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal", c=call(self._buildInstall))
-        self.GUI["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal", c=call(self._buildRemove))
+        s.GUI["layout4"] = cmds.columnLayout(adjustableColumn=True)
+        s.GUI["text2"] = cmds.text(label="What would you like to do?", h=50)
+        s.GUI["button1"] = cmds.iconTextButton(label="Install Script", h=40, image="cluster.png", st="iconAndTextHorizontal", c=call(s._buildInstall))
+        s.GUI["button2"] = cmds.iconTextButton(label="Remove Script", h=40, image="deleteActive.png", st="iconAndTextHorizontal", c=call(s._buildRemove))
         cmds.setParent("..")
         cmds.setParent("..")
-        cmds.setParent(self.GUI["wrapper"])
+        cmds.setParent(s.GUI["wrapper"])
 
-    def _buildInstall(self):  # Install UI
+    def _buildInstall(s):  # Install UI
         """
         Create Install UI
         """
-        self._clearFrame()
-        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
-        self.GUI["progress1"] = cmds.progressBar(w=self.width, s=0)
-        self.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, w=self.width, h=200)
-        self.GUI["text1"] = cmds.text(label="", align="left")
+        s._clearFrame()
+        s.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=s.width)
+        s.GUI["progress1"] = cmds.progressBar(w=s.width, s=0)
+        s.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, w=s.width, h=200)
+        s.GUI["text1"] = cmds.text(label="", align="left")
         cmds.setParent("..")
-        cmds.setParent(self.GUI["wrapper"])
+        cmds.setParent(s.GUI["wrapper"])
 
         def log(message):
             try:
-                text = cmds.text(self.GUI["text1"], q=True, label=True)
+                text = cmds.text(s.GUI["text1"], q=True, label=True)
                 text = "%s\n:>   %s" % (text, message)
-                cmds.text(self.GUI["text1"], e=True, label=text)
-                cmds.scrollLayout(self.GUI["layout2"], e=True, sp="down")
+                cmds.text(s.GUI["text1"], e=True, label=text)
+                cmds.scrollLayout(s.GUI["layout2"], e=True, sp="down")
                 cmds.refresh(cv=True)
             except RuntimeError:
                 pass
 
         def update(progress):
-            cmds.progressBar(self.GUI["progress1"], e=True, pr=progress)
+            cmds.progressBar(s.GUI["progress1"], e=True, pr=progress)
             cmds.refresh(cv=True)
 
         Say().what("log", log).what("update", update)
@@ -162,44 +162,44 @@ class MainWindow(object):
         Say().it("Installing script...")
         Say().it("\n")
 
-        self._install()
+        s._install()
 
-    def _buildRemove(self):  # Uninstall UI
+    def _buildRemove(s):  # Uninstall UI
         """
         Create Uninstall UI
         """
-        self._clearFrame()
-        self.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=self.width)
-        self.GUI["text1"] = cmds.text(label="Uninstalling Script.", p=self.GUI["wrapper"], h=50, w=400)
-        self.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, w=self.width, h=200)
-        self.GUI["text2"] = cmds.text(label="", align="left")
+        s._clearFrame()
+        s.GUI["layout1"] = cmds.columnLayout(adjustableColumn=True, w=s.width)
+        s.GUI["text1"] = cmds.text(label="Uninstalling Script.", p=s.GUI["wrapper"], h=50, w=400)
+        s.GUI["layout2"] = cmds.scrollLayout(bgc=[0, 0, 0], cr=True, w=s.width, h=200)
+        s.GUI["text2"] = cmds.text(label="", align="left")
         cmds.setParent("..")
-        cmds.setParent(self.GUI["wrapper"])
+        cmds.setParent(s.GUI["wrapper"])
 
         def log(message):
             try:
-                text = cmds.text(self.GUI["text2"], q=True, label=True)
+                text = cmds.text(s.GUI["text2"], q=True, label=True)
                 text = "%s\n:>   %s" % (text, message)
-                cmds.text(self.GUI["text2"], e=True, label=text)
-                cmds.scrollLayout(self.GUI["layout2"], e=True, sp="down")
+                cmds.text(s.GUI["text2"], e=True, label=text)
+                cmds.scrollLayout(s.GUI["layout2"], e=True, sp="down")
                 cmds.refresh(cv=True)
             except RuntimeError:
                 pass
 
         Say().what("log", log)
         Say().it("Removing Script.")
-        self._uninstall()
+        s._uninstall()
 
-    def _clearFrame(self):  # Clear the UI
+    def _clearFrame(s):  # Clear the UI
         """
         Clear UI for next build
         """
-        self.GUI["wrapper"] = self.GUI.get("wrapper", "")
-        if cmds.layout(self.GUI["wrapper"], ex=True):
-            cmds.deleteUI(self.GUI["wrapper"])
-        self.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True, p=self.GUI["window"])
+        s.GUI["wrapper"] = s.GUI.get("wrapper", "")
+        if cmds.layout(s.GUI["wrapper"], ex=True):
+            cmds.deleteUI(s.GUI["wrapper"])
+        s.GUI["wrapper"] = cmds.columnLayout(adjustableColumn=True, p=s.GUI["window"])
 
-    def _install(self):
+    def _install(s):
         """
         Let the installation BEGIN!
         """
@@ -238,7 +238,7 @@ class MainWindow(object):
 
             Say().it("Install Complete!")
 
-    def _uninstall(self):
+    def _uninstall(s):
         """
         Remove script...
         """
@@ -261,24 +261,24 @@ class Install(object):
     """
     Run through installation process
     """
-    def __enter__(self):
+    def __enter__(s):
         # Script provided Info
         pluginInfo = getMelVars()
-        self.name = pluginInfo["name"]  # Name of script
-        self.code = pluginInfo["shelf"]  # Code to put in a shelf icon.
-        self.auto = pluginInfo["auto"]  # Code to put in userSetup
-        self.repo = pluginInfo["repo"]  # name of Repository
-        self.user = pluginInfo["user"]  # user of Repository
+        s.name = pluginInfo["name"]  # Name of script
+        s.code = pluginInfo["shelf"]  # Code to put in a shelf icon.
+        s.auto = pluginInfo["auto"]  # Code to put in userSetup
+        s.repo = pluginInfo["repo"]  # name of Repository
+        s.user = pluginInfo["user"]  # user of Repository
         scriptDir = pluginInfo["scriptPath"]  # Path to scripts
-        self.shelf = mel.eval('$tmp = $gShelfTopLevel')  # UI element of the Maya shelf
+        s.shelf = mel.eval('$tmp = $gShelfTopLevel')  # UI element of the Maya shelf
 
         # Derived info
-        self.repoUrl = "https://api.github.com/repos/%s/%s/releases/latest" % (self.user, self.repo)
-        self.scriptPath = os.path.join(scriptDir, self.name)  # Place we will put the script
-        self.cleanup = []  # List of items to remove afterwards
-        return self
+        s.repoUrl = "https://api.github.com/repos/%s/%s/releases/latest" % (s.user, s.repo)
+        s.scriptPath = os.path.join(scriptDir, s.name)  # Place we will put the script
+        s.cleanup = []  # List of items to remove afterwards
+        return s
 
-    def getMetaInfo(self, url):
+    def getMetaInfo(s, url):
         """
         Get download information from Repo
         """
@@ -290,7 +290,7 @@ class Install(object):
         result["release"] = re.match("(\d{4}-\d{2}-\d{2})", data["published_at"]).group(1)
         return result
 
-    def download(self, url, callback):
+    def download(s, url, callback):
         """
         Download the specified file and provide updates to the callback
         """
@@ -303,24 +303,24 @@ class Install(object):
                 callback(1.0)
 
         f = urllib.urlretrieve(url, None, update)[0]
-        self.cleanup.append(f)
+        s.cleanup.append(f)
         return f
 
-    def unzip(self, src):
+    def unzip(s, src):
         z = zipfile.ZipFile(src, "r")
         tmp = os.path.dirname(src)
         folder = os.path.join(tmp, z.namelist()[0])
         z.extractall(tmp)
-        self.cleanup.append(folder)
+        s.cleanup.append(folder)
         return folder
 
-    def move(self, src, dest):
+    def move(s, src, dest):
         if os.path.exists(dest):
-            self.delete(dest)
+            s.delete(dest)
         shutil.move(src, dest)
         return dest
 
-    def delete(self, path):
+    def delete(s, path):
         try:
             if os.path.isfile(path):
                 os.remove(path)
@@ -331,7 +331,7 @@ class Install(object):
         except OSError as e:
             Say().it(e)
 
-    def __exit__(self, errType, errValue, trace):
+    def __exit__(s, errType, errValue, trace):
         """
         Clean up after install, or if error occurrs
         """
@@ -340,9 +340,9 @@ class Install(object):
             Say().it("%s :: %s" % (errType.__name__, errValue))
             Say().it("\n".join(traceback.format_tb(trace)))
         Say().it("Cleaning up.")
-        if self.cleanup:
-            for clean in self.cleanup:
-                self.delete(clean)
+        if s.cleanup:
+            for clean in s.cleanup:
+                s.delete(clean)
         return True
 
 
@@ -350,67 +350,68 @@ class userSetup(object):
     """
     Modfiy the startup script
     """
-    def __init__(self):
+    def __init__(s):
         path = getMelVars()
-        self._path = os.path.join(path["scriptPath"], "userSetup.py")
-        if os.path.exists(self._path):
-            with open(self._path, "r") as f:
-                self._data = f.read()
+        s._path = os.path.join(path["scriptPath"], "userSetup.py")
+        if os.path.exists(s._path):
+            with open(s._path, "r") as f:
+                s._data = f.read()
         else:
-            self._data = ""
+            s._data = ""
 
-    def __enter__(self):
+    def __enter__(s):
         search = r"\s*?# # START\s+(\w+)\s*"  # Opening tag
         search += r"(.*?)"  # Content
         search += r"\s*# # END\s+\1\s*"  # Close tag
         parse = re.compile(search, re.S)
-        self.code = {}
+        s.code = {}
         subpos = 0
         newData = ""
-        for find in parse.finditer(self._data):
-            self.code[find.group(1)] = find.group(2)
+        for find in parse.finditer(s._data):
+            s.code[find.group(1)] = find.group(2)
             pos = find.span()
-            newData += self._data[subpos:pos[0]] + "\n"
+            newData += s._data[subpos:pos[0]] + "\n"
             subpos = pos[1]
-        newData += self._data[subpos:len(self._data)] + "\n"
-        self._data = newData
-        return self
+        newData += s._data[subpos:len(s._data)]
+        s._data = newData
+        return s
 
-    def __exit__(self, type, err, trace):
-        for k in self.code:
+    def __exit__(s, type, err, trace):
+        for k in s.code:
             codeblock = """
-# # START %s
-%s
-# # END %s
-""" % (k, self.code[k], k)
-            self._data += codeblock
-        with open(self._path, "w") as f:
-            f.write(self._data)
+# # START %(name)s
+%(code)s
+# # END %(name)s
+""" % {"name": k, "code": s.code[k]}
+            s._data += codeblock
+        with open(s._path, "w") as f:
+            data = re.sub("\r?\n", os.linesep, s._data)  # Fix newlines for windows
+            f.write(data)
 
-    def add(self, key, val):
-        self.code[key] = val
+    def add(s, key, val):
+        s.code[key] = val
         exec val
 
-    def delete(self, key):
-        if key in self.code:
-            del self.code[key]
+    def delete(s, key):
+        if key in s.code:
+            del s.code[key]
 
 
 class mayaShelf(object):
     """
     Access maya shelf and insert items.
     """
-    def __init__(self, shelf):
-        self.shelf = shelf
+    def __init__(s, shelf):
+        s.shelf = shelf
 
-    def add(self, name, code):
-        self._addToShelf(name, code)
+    def add(s, name, code):
+        s._addToShelf(name, code)
 
-    def delete(self, name, code):
-        self._removeFromShelf(name, code)
+    def delete(s, name, code):
+        s._removeFromShelf(name, code)
 
-    def _addToShelf(self, name, code):
-        active = cmds.tabLayout(self.shelf, st=True, q=True)  # Grab active shelf
+    def _addToShelf(s, name, code):
+        active = cmds.tabLayout(s.shelf, st=True, q=True)  # Grab active shelf
         buttons = cmds.shelfLayout(active, q=True, ca=True)  # List all buttons in shelf
         missing = True  # Shelf button exists here?
         for b in buttons:
@@ -423,8 +424,8 @@ class mayaShelf(object):
             cmds.shelfButton(label=name, c=code, image="daisyLarge.png", p=active)
             Say().it("Created shelf button.")
 
-    def _removeFromShelf(self, name, code):
-        allShelf = cmds.tabLayout(self.shelf, ca=True, q=True)
+    def _removeFromShelf(s, name, code):
+        allShelf = cmds.tabLayout(s.shelf, ca=True, q=True)
         for s in allShelf:
             buttons = cmds.shelfLayout(s, q=True, ca=True)
             if buttons:
@@ -443,7 +444,7 @@ else:  # Else we're running in maya window normally. Lets set up some test varia
     mel.eval("""
     $name = "testscript";
     $shelf = "print \\"Shelf Works.\\"";
-    $auto = "print \\"This should be visible if it works.\\"";
+    $auto = "print \\"This should be visible if it works.\\"\\nprint \\"this should be on a new line\\"";
     $repo = "license_fix";
     $user = "internetimagery";
     """)
