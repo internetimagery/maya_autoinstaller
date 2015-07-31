@@ -414,12 +414,13 @@ class mayaShelf(object):
         active = cmds.tabLayout(s.shelf, st=True, q=True)  # Grab active shelf
         buttons = cmds.shelfLayout(active, q=True, ca=True)  # List all buttons in shelf
         missing = True  # Shelf button exists here?
-        for b in buttons:
-            label = cmds.shelfButton(b, l=True, q=True)
-            if label == name:
-                cmds.shelfButton(b, e=True, c=code)
-                missing = False
-                Say().it("Updated existing shelf button.")
+        if buttons:
+            for b in buttons:
+                label = cmds.shelfButton(b, l=True, q=True)
+                if label == name:
+                    cmds.shelfButton(b, e=True, c=code)
+                    missing = False
+                    Say().it("Updated existing shelf button.")
         if missing:
             cmds.shelfButton(label=name, c=code, image="daisyLarge.png", p=active)
             Say().it("Created shelf button.")
